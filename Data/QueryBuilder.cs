@@ -129,10 +129,13 @@ namespace DapperHelper.Data
         public static string GetInsertQuery<T>(T obj, bool returnInsertedObj = true)
         {
             var attribute = GetTableNameAttribute(obj);
+            var dbKeyName = obj.GetType().GetProperties().Where(x => x.IsDefined(typeof(DbKeyAttribute), false))
+                .Select(s => s.Name).FirstOrDefault();
             var properties = obj.GetType().GetProperties().Where(x =>
                !x.IsDefined(typeof(DbKeyAttribute), false) && !x.IsDefined(typeof(IgnoreAttribute), false)).Select(s => s.Name).ToList();
+            
             return
-                $"INSERT INTO {attribute.TableName} ({string.Join(",", properties)}) {(returnInsertedObj ? " OUTPUT INSERTED.* " : string.Empty)} VALUES ({string.Join(",", properties.Select(s => "@" + s))})";
+                $"INSERT INTO {attribute.TableName} ({string.Join(",", properties.Select(s => $"[{s}]"))})  VALUES ({string.Join(",", properties.Select(s => "@" + s))}) {(dbKeyName != null ? (returnInsertedObj ? $" SELECT CAST(SCOPE_IDENTITY() AS INT) AS {dbKeyName} " : string.Empty) : string.Empty)}";
         }
 
         /// <summary>
